@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>АгроПульс | AgroPulse MVP (Local Storage)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <style>
+        /* Стиль для контейнера карты, чтобы она занимала всю доступную высоту */
+        #map { height: 100vh; width: 100%; }
+        /* Кастомный стиль для кнопок Leaflet Draw */
+        .leaflet-container a { color: #10B981; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+
+    <div id="app" class="min-h-screen flex flex-col lg:flex-row">
+
+        <nav class="bg-gray-800 text-white w-full lg:w-56 p-4 flex flex-row lg:flex-col justify-between items-center lg:items-start shadow-xl z-50">
+            <h1 class="text-2xl font-bold text-green-400 mb-4 hidden lg:block">АгроПульс</h1>
+            <div class="flex space-x-4 lg:space-x-0 lg:flex-col lg:space-y-3 w-full lg:w-auto">
+                <button onclick="navigateTo('map')" class="nav-btn transition duration-300 ease-in-out bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Карта Полей
+                </button>
+                <button onclick="navigateTo('dashboard')" class="nav-btn transition duration-300 ease-in-out bg-gray-700 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7-8v8m14-8v8"></path></svg>
+                    Дашборд
+                </button>
+                <button onclick="navigateTo('profile')" class="nav-btn transition duration-300 ease-in-out bg-gray-700 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    Профиль
+                </button>
+            </div>
+        </nav>
+
+        <main id="content-container" class="flex-grow p-4 lg:p-8 overflow-y-auto">
+
+            <section id="page-map" class="page-content active h-full w-full">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Карта Полей: Нарисуйте Ваш Участок</h2>
+                <div id="map" class="rounded-xl shadow-2xl border border-gray-200"></div>
+                
+                <div id="save-field-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[1000]">
+                    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm">
+                        <h3 class="text-xl font-semibold mb-4">Сохранить Новое Поле</h3>
+                        <input type="text" id="field-name-input" placeholder="Название поля (например, 'Участок 1')" 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mb-4">
+                        <div class="flex justify-end space-x-3">
+                            <button onclick="closeModal('save-field-modal')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Отмена</button>
+                            <button onclick="saveNewField()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Сохранить</button>
+                        </div>
+                    </div>
+                </div>
+                
+            </section>
+
+            <section id="page-dashboard" class="page-content hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Дашборд: Мониторинг Полей</h2>
+                
+                <div id="field-list" class="space-y-4 mb-8">
+                    <p class="text-gray-500">Загрузка полей...</p>
+                </div>
+
+                <div id="field-details-card" class="bg-white p-6 rounded-xl shadow-2xl border border-gray-200 hidden">
+                    <h3 id="details-field-name" class="text-2xl font-bold text-gray-700 mb-4"></h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <p class="text-sm font-medium text-blue-600">Площадь</p>
+                            <p id="details-area" class="text-3xl font-extrabold text-blue-800 mt-1">N/A</p>
+                        </div>
+
+                        <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                            <p class="text-sm font-medium text-orange-600">Темп. поверхности (2м)</p>
+                            <p id="details-air-temp" class="text-3xl font-extrabold text-orange-800 mt-1">N/A</p>
+                        </div>
+
+                        <div class="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                            <p class="text-sm font-medium text-amber-600">Темп. почвы (5см)</p>
+                            <p id="details-soil-temp" class="text-3xl font-extrabold text-amber-800 mt-1">N/A</p>
+                        </div>
+
+                        <div class="bg-sky-50 p-4 rounded-lg border border-sky-200">
+                            <p class="text-sm font-medium text-sky-600">Влажность почвы</p>
+                            <p id="details-soil-moisture" class="text-3xl font-extrabold text-sky-800 mt-1">N/A</p>
+                        </div>
+                        
+                        <div class="p-4 rounded-lg border border-gray-200" id="details-freeze-risk-container">
+                            <p class="text-sm font-medium text-gray-600">Риск заморозков</p>
+                            <p id="details-freeze-risk" class="text-3xl font-extrabold mt-1">Расчет...</p>
+                            <p class="text-xs text-gray-500 mt-1">Метод: Разность температур (18:00 vs 21:00)</p>
+                        </div>
+
+                        <div class="p-4 rounded-lg border border-gray-200" id="details-drought-risk-container">
+                            <p class="text-sm font-medium text-gray-600">Риск засухи (Индекс Si)</p>
+                            <p id="details-drought-risk" class="text-3xl font-extrabold mt-1">Расчет...</p>
+                            <p class="text-xs text-gray-500 mt-1">Метод: Общий индекс засушливости Педя (Si)</p>
+                        </div>
+                        
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-profile" class="page-content hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Личный Кабинет и Профиль</h2>
+                
+                <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg mx-auto border border-gray-200">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-700">Ваши Данные</h3>
+                    
+                    <div id="auth-status" class="mb-4 p-3 rounded-lg bg-blue-100 text-blue-800 font-mono text-sm break-all">
+                        <p>Статус: Локальный режим (localStorage)</p>
+                        <p id="current-user-id" class="mt-1 font-bold">UserID: local-user-mvp</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="profile-name" class="block text-sm font-medium text-gray-700">Имя пользователя / Контактное лицо</label>
+                        <input type="text" id="profile-name" placeholder="Введите Ваше имя"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mt-1">
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="profile-farm-name" class="block text-sm font-medium text-gray-700">Название хозяйства / Компании</label>
+                        <input type="text" id="profile-farm-name" placeholder="Название Вашего хозяйства"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mt-1">
+                    </div>
+
+                    <button onclick="saveProfileData()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">
+                        Сохранить Данные Профиля
+                    </button>
+
+                    <div id="profile-message" class="mt-4 text-center hidden p-2 rounded-lg text-sm"></div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        
+        // ==========================================================
+        // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+        // ==========================================================
+        const LOCAL_STORAGE_FIELDS_KEY = 'agropulse_fields';
+        const LOCAL_STORAGE_PROFILE_KEY = 'agropulse_profile';
+        window.currentUserId = 'local-user-mvp'; // Заглушка для ID
+        let fieldsData = {}; // Хранилище данных полей
+
+        /**
+         * Утилита для генерации уникального ID
+         * @returns {string} Уникальный ID
+         */
+        function generateId() {
+            return Math.random().toString(36).substring(2, 9);
+        }
+
+        // ==========================================================
+        // ЛОГИКА ПРОФИЛЯ (Локальное хранилище)
+        // ==========================================================
+        
+        /**
+         * Загрузка данных профиля
+         */
+        function loadProfileData() {
+            try {
+                const profileData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_PROFILE_KEY) || '{}');
+                document.getElementById('profile-name').value = profileData.name || '';
+                document.getElementById('profile-farm-name').value = profileData.farmName || '';
+            } catch (error) {
+                console.error("Ошибка загрузки профиля из localStorage:", error);
+            }
+        }
+
+        /**
+         * Сохранение данных профиля
+         */
+        window.saveProfileData = function() {
+            const name = document.getElementById('profile-name').value.trim();
+            const farmName = document.getElementById('profile-farm-name').value.trim();
+            const messageElement = document.getElementById('profile-message');
+
+            try {
+                const profileData = { name, farmName };
+                localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(profileData));
+
+                messageElement.textContent = 'Данные профиля успешно сохранены локально!';
+                messageElement.classList.add('bg-green-100', 'text-green-700');
+                messageElement.classList.remove('hidden');
+            } catch (error) {
+                console.error("Ошибка сохранения профиля:", error);
+                messageElement.textContent = `Ошибка сохранения: ${error.message}`;
+                messageElement.classList.add('bg-red-100', 'text-red-700');
+                messageElement.classList.remove('hidden');
+            }
+            setTimeout(() => messageElement.classList.add('hidden'), 3000);
+        }
+        
+        // ==========================================================
+        // ЛОГИКА ДАШБОРДА (Локальное хранилище)
+        // ==========================================================
+        
+        /**
+         * Загрузка полей из localStorage и обновление дашборда
+         */
+        function refreshDashboard() {
+            const storedFields = JSON.parse(localStorage.getItem(LOCAL_STORAGE_FIELDS_KEY) || '[]');
+            const fieldListContainer = document.getElementById('field-list');
+            fieldListContainer.innerHTML = '';
+            fieldsData = {};
+            
+            if (storedFields.length === 0) {
+                fieldListContainer.innerHTML = '<p class="p-4 bg-yellow-50 rounded-lg text-yellow-800">У вас пока нет сохраненных полей. Перейдите на страницу "Карта Полей", чтобы их нарисовать.</p>';
+                document.getElementById('field-details-card').classList.add('hidden');
+                return;
+            }
+
+            storedFields.forEach(field => {
+                fieldsData[field.id] = field;
+
+                // Создание кнопки поля в списке
+                const areaKm2 = calculatePolygonAreaKm2(field.coordinates);
+                const button = document.createElement('button');
+                button.onclick = () => showFieldDetails(field.id);
+                button.className = 'w-full text-left bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition duration-200 ease-in-out border border-gray-200 hover:border-green-500 flex justify-between items-center';
+                button.innerHTML = `
+                    <div>
+                        <p class="text-lg font-semibold text-gray-800">${field.name}</p>
+                        <p class="text-sm text-gray-500">${areaKm2.toFixed(3)} км² (${(areaKm2 * 100).toFixed(1)} Га)</p>
+                    </div>
+                    <div class="text-green-600 font-bold">Подробнее &rarr;</div>
+                `;
+                fieldListContainer.appendChild(button);
+            });
+            
+            // Автоматически показываем детали первого поля
+            const firstFieldId = Object.keys(fieldsData)[0];
+            if (firstFieldId) {
+                showFieldDetails(firstFieldId);
+            }
+        }
+        
+        /**
+         * Показывает детальную информацию о выбранном поле и расчеты рисков
+         * @param {string} fieldId - ID поля
+         */
+        function showFieldDetails(fieldId) {
+            const field = fieldsData[fieldId];
+            if (!field) return;
+
+            const card = document.getElementById('field-details-card');
+            card.classList.remove('hidden');
+
+            // Расчет площади
+            const areaKm2 = calculatePolygonAreaKm2(field.coordinates);
+            document.getElementById('details-area').textContent = `${areaKm2.toFixed(3)} км²`;
+            document.getElementById('details-field-name').textContent = field.name;
+
+            // ИМИТАЦИЯ ПОГОДНЫХ ДАННЫХ
+            const simulatedData = simulateFieldData(field.coordinates[0]);
+
+            document.getElementById('details-air-temp').textContent = `${simulatedData.airTemp}°C`;
+            document.getElementById('details-soil-temp').textContent = `${simulatedData.soilTemp}°C`;
+            document.getElementById('details-soil-moisture').textContent = `${simulatedData.soilMoisture}%`;
+
+            // РАСЧЕТ РИСКОВ 
+            const freezeRisk = calculateFreezeRisk(simulatedData);
+            updateRiskUI('details-freeze-risk', 'details-freeze-risk-container', freezeRisk.text, freezeRisk.color);
+
+            const droughtRisk = calculateDroughtRisk(simulatedData);
+            updateRiskUI('details-drought-risk', 'details-drought-risk-container', droughtRisk.text, droughtRisk.color);
+        }
+
+        /**
+         * Имитация агрометеорологических данных (функции сохранены)
+         */
+        function simulateFieldData(centerCoord) {
+            const latFactor = (90 - Math.abs(centerCoord.lat)) / 90;
+            const nowHour = new Date().getHours();
+            
+            const baseTemp = 15 + latFactor * 15;
+            const dayAdjustment = (nowHour > 8 && nowHour < 20) ? 5 : 0;
+            const airTemp = (baseTemp + dayAdjustment + Math.random() * 5).toFixed(1);
+            
+            const soilTemp = (airTemp * 0.95 + Math.random() * 3).toFixed(1);
+            
+            const soilMoisture = (20 + (1 - latFactor) * 50 + Math.random() * 10).toFixed(0);
+
+            const tempDiff18 = 5 + Math.random() * 5;
+            const tempDiff21 = 5 + Math.random() * 5;
+            
+            return { airTemp: parseFloat(airTemp), soilTemp: parseFloat(soilTemp), soilMoisture: parseInt(soilMoisture), tempDiff18, tempDiff21 };
+        }
+        
+        /**
+         * Расчет риска заморозков (функция сохранена)
+         */
+        function calculateFreezeRisk(data) {
+            const diffChange = Math.abs(data.tempDiff21 - data.tempDiff18);
+
+            let riskText = "Низкий";
+            let riskColor = "bg-green-100 border-green-300 text-green-700";
+
+            if (diffChange > 3) {
+                riskText = "Высокий";
+                riskColor = "bg-red-100 border-red-300 text-red-700";
+            } else if (diffChange > 1) {
+                riskText = "Средний";
+                riskColor = "bg-yellow-100 border-yellow-300 text-yellow-700";
+            }
+            return { text: riskText, color: riskColor };
+        }
+
+        /**
+         * Расчет риска засухи (функция сохранена)
+         */
+        function calculateDroughtRisk(data) {
+            const Si = (80 - data.soilMoisture) / 10;
+            
+            let riskText = "Норма";
+            let riskColor = "bg-green-100 border-green-300 text-green-700";
+
+            if (Si >= 2.0) {
+                riskText = "Засуха (Si ≥ 2.0)";
+                riskColor = "bg-red-100 border-red-300 text-red-700";
+            } else if (Si > 0) {
+                riskText = "Засушливо (Si > 0)";
+                riskColor = "bg-yellow-100 border-yellow-300 text-yellow-700";
+            }
+            return { text: riskText, color: riskColor };
+        }
+        
+        /**
+         * Обновляет UI для отображения рисков (функция сохранена)
+         */
+        function updateRiskUI(textId, containerId, text, colorClass) {
+            document.getElementById(textId).textContent = text;
+            const container = document.getElementById(containerId);
+            container.className = container.className.split(' ').filter(c => !c.startsWith('bg-') && !c.startsWith('border-') && !c.startsWith('text-')).join(' ');
+            container.classList.add(...colorClass.split(' '));
+        }
+        
+        /**
+         * Расчет площади полигона в км² (функция сохранена)
+         */
+        function calculatePolygonAreaKm2(coords) {
+            if (!coords || coords.length < 3) return 0;
+            const earthRadius = 6371;
+            let area = 0;
+            
+            for (let i = 0; i < coords.length; i++) {
+                const p1 = coords[i];
+                const p2 = coords[(i + 1) % coords.length];
+                
+                area += (p2.lng - p1.lng) * (2 + Math.sin(p1.lat * Math.PI / 180) + Math.sin(p2.lat * Math.PI / 180));
+            }
+
+            area = area * earthRadius * earthRadius / 2;
+            return Math.abs(area);
+        }
+
+        // ==========================================================
+        // ЛОГИКА КАРТЫ (Локальное хранилище)
+        // ==========================================================
+
+        let map, drawnItems, drawControl;
+        let pendingLayer = null;
+
+        /**
+         * Инициализация карты Leaflet (функция сохранена)
+         */
+        window.initMap = function() {
+            if (map) {
+                map.remove();
+            }
+
+            map = L.map('map').setView([55.7558, 37.6176], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            drawControl = new L.Control.Draw({
+                edit: {
+                    featureGroup: drawnItems
+                },
+                draw: {
+                    polygon: {
+                        shapeOptions: { color: '#10B981' }
+                    },
+                    polyline: false,
+                    rectangle: false,
+                    circle: false,
+                    marker: false,
+                    circlemarker: false
+                }
+            });
+            map.addControl(drawControl);
+
+            map.on(L.Draw.Event.CREATED, function (event) {
+                const layer = event.layer;
+                pendingLayer = layer;
+                openModal('save-field-modal');
+            });
+            
+            map.on(L.Draw.Event.EDITED, function (event) {
+                event.layers.each(function (layer) {
+                    const fieldId = layer.options.fieldId;
+                    if (fieldId) {
+                        saveEditedField(fieldId, layer);
+                    }
+                });
+            });
+
+            loadFieldsOnMap();
+        };
+        
+        /**
+         * Открывает модальное окно (функция сохранена)
+         */
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+            document.getElementById(id).classList.add('flex');
+        }
+
+        /**
+         * Закрывает модальное окно (функция сохранена)
+         */
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('flex');
+            document.getElementById(id).classList.add('hidden');
+            if (pendingLayer) {
+                pendingLayer = null;
+            }
+        }
+
+        /**
+         * Сохраняет новое поле в localStorage
+         */
+        window.saveNewField = function() {
+            if (!pendingLayer) return;
+
+            const nameInput = document.getElementById('field-name-input');
+            const fieldName = nameInput.value.trim();
+
+            if (!fieldName) {
+                alert("Пожалуйста, введите название поля.");
+                return;
+            }
+
+            try {
+                // Извлечение координат
+                const geoJson = pendingLayer.toGeoJSON();
+                const leafletCoords = geoJson.geometry.coordinates[0];
+                const coordinates = leafletCoords.map(c => ({ lat: c[1], lng: c[0] }));
+                
+                const newField = {
+                    id: generateId(), // Генерация локального ID
+                    name: fieldName,
+                    coordinates: coordinates,
+                    createdAt: new Date().toISOString(),
+                    center: coordinates[0]
+                };
+                
+                // Загрузка, добавление и сохранение
+                const storedFields = JSON.parse(localStorage.getItem(LOCAL_STORAGE_FIELDS_KEY) || '[]');
+                storedFields.push(newField);
+                localStorage.setItem(LOCAL_STORAGE_FIELDS_KEY, JSON.stringify(storedFields));
+                
+                console.log("Поле успешно сохранено с ID:", newField.id);
+                
+                // Добавляем сохраненный слой на карту с ID
+                pendingLayer.options.fieldId = newField.id;
+                pendingLayer.options.fieldName = fieldName;
+                drawnItems.addLayer(pendingLayer);
+                
+                // Очистка и закрытие
+                nameInput.value = '';
+                closeModal('save-field-modal');
+                pendingLayer = null;
+                
+            } catch (error) {
+                console.error("Ошибка сохранения поля:", error);
+                alert("Ошибка сохранения поля: " + error.message);
+            }
+        }
+        
+        /**
+         * Загружает сохраненные поля из localStorage и отображает их на карте
+         */
+        function loadFieldsOnMap() {
+            try {
+                const storedFields = JSON.parse(localStorage.getItem(LOCAL_STORAGE_FIELDS_KEY) || '[]');
+                
+                drawnItems.clearLayers(); // Очищаем старые слои
+                
+                storedFields.forEach((field) => {
+                    const fieldId = field.id;
+                    
+                    // Преобразование координат из {lat, lng} обратно в Leaflet-формат [lat, lng]
+                    const leafletLatLngs = field.coordinates.map(c => [c.lat, c.lng]);
+                    
+                    const polygon = L.polygon(leafletLatLngs, {
+                        color: '#10B981', 
+                        weight: 3, 
+                        opacity: 0.7, 
+                        fillOpacity: 0.2,
+                        fieldId: fieldId, // Сохраняем ID для редактирования/удаления
+                        fieldName: field.name
+                    });
+
+                    // Создание всплывающего окна (Popup) с кнопкой удаления
+                    const popupContent = `
+                        <div class="p-1">
+                            <p class="font-bold text-gray-800">${field.name}</p>
+                            <p class="text-sm text-gray-500">ID: ${fieldId.substring(0, 8)}...</p>
+                            <button onclick="deleteField('${fieldId}')" class="mt-2 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded-lg transition duration-200">
+                                Удалить Поле
+                            </button>
+                        </div>
+                    `;
+                    polygon.bindPopup(popupContent);
+                    
+                    drawnItems.addLayer(polygon);
+                });
+                
+                if (storedFields.length > 0) {
+                    const bounds = drawnItems.getBounds();
+                    if (bounds.isValid()) {
+                        map.fitBounds(bounds);
+                    }
+                }
+
+            } catch (error) {
+                console.error("Ошибка загрузки полей:", error);
+            }
+        }
+
+        /**
+         * Удаление поля из localStorage и с карты
+         * @param {string} fieldId - ID поля для удаления
+         */
+        window.deleteField = function(fieldId) {
+            if (!window.confirm("Вы уверены, что хотите удалить это поле?")) {
+                return;
+            }
+
+            try {
+                let storedFields = JSON.parse(localStorage.getItem(LOCAL_STORAGE_FIELDS_KEY) || '[]');
+                
+                // Фильтрация: оставляем все поля, кроме удаляемого
+                const updatedFields = storedFields.filter(f => f.id !== fieldId);
+                localStorage.setItem(LOCAL_STORAGE_FIELDS_KEY, JSON.stringify(updatedFields));
+                
+                console.log(`Поле ${fieldId} удалено.`);
+                
+                // Обновление карты и дашборда
+                loadFieldsOnMap();
+                refreshDashboard();
+            } catch (error) {
+                console.error("Ошибка удаления поля:", error);
+                alert("Ошибка удаления поля: " + error.message);
+            }
+        }
+        
+        /**
+         * Сохранение отредактированного поля в localStorage
+         */
+        function saveEditedField(fieldId, layer) {
+             try {
+                const geoJson = layer.toGeoJSON();
+                const leafletCoords = geoJson.geometry.coordinates[0];
+                const coordinates = leafletCoords.map(c => ({ lat: c[1], lng: c[0] }));
+                
+                let storedFields = JSON.parse(localStorage.getItem(LOCAL_STORAGE_FIELDS_KEY) || '[]');
+                
+                const fieldIndex = storedFields.findIndex(f => f.id === fieldId);
+
+                if (fieldIndex !== -1) {
+                    storedFields[fieldIndex].coordinates = coordinates;
+                    storedFields[fieldIndex].center = coordinates[0];
+                    localStorage.setItem(LOCAL_STORAGE_FIELDS_KEY, JSON.stringify(storedFields));
+                    console.log("Поле успешно отредактировано и сохранено:", fieldId);
+                }
+                
+                // Обновление дашборда для пересчета площади
+                refreshDashboard(); 
+            } catch (error) {
+                console.error("Ошибка сохранения отредактированного поля:", error);
+                alert("Ошибка сохранения отредактированного поля: " + error.message);
+            }
+        }
+
+
+        // ==========================================================
+        // ГЛАВНАЯ НАВИГАЦИЯ
+        // ==========================================================
+        
+        let currentPage = 'map'; 
+
+        /**
+         * Переключает отображаемую страницу (функция сохранена)
+         */
+        window.navigateTo = function(pageId) {
+            if (currentPage === pageId) return;
+
+            document.querySelectorAll('.page-content').forEach(section => {
+                section.classList.add('hidden');
+                section.classList.remove('active');
+            });
+
+            const targetPage = document.getElementById(`page-${pageId}`);
+            if (targetPage) {
+                targetPage.classList.remove('hidden');
+                targetPage.classList.add('active');
+                currentPage = pageId;
+            }
+
+            if (pageId === 'map') {
+                setTimeout(() => {
+                    if (map) {
+                        map.invalidateSize();
+                        loadFieldsOnMap(); 
+                    }
+                }, 100); 
+            }
+            
+            // Если переходим на дашборд, обновляем список полей
+            if (pageId === 'dashboard') {
+                refreshDashboard();
+            }
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                const btnPageId = btn.onclick.toString().match(/navigateTo\('(\w+)'\)/)[1];
+                if (btnPageId === pageId) {
+                    btn.classList.remove('bg-gray-700');
+                    btn.classList.add('bg-green-600');
+                } else {
+                    btn.classList.add('bg-gray-700');
+                    btn.classList.remove('bg-green-600');
+                }
+            });
+        }
+        
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProfileData(); // Загрузка профиля при старте
+            window.initMap();  // Инициализация карты
+            window.navigateTo('map');
+        });
+
+    </script>
+</body>
+</html>
