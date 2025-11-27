@@ -109,7 +109,7 @@
                         <div class="p-4 rounded-lg border border-gray-200" id="details-freeze-risk-container">
                             <p class="text-sm font-medium text-gray-600">Риск заморозков</p>
                             <p id="details-freeze-risk" class="text-3xl font-extrabold mt-1">Расчет...</p>
-                            <p class="text-xs text-gray-500 mt-1">Метод: Прогноз OWM (мин. темп.)</p>
+                            <p class="text-xs text-gray-500 mt-1">Метод: Прогноз Agro API (мин. темп.)</p>
                         </div>
 
                         <div class="p-4 rounded-lg border border-gray-200" id="details-drought-risk-container">
@@ -167,10 +167,10 @@
         let fieldsData = {};
         
         // API KEYS
-        const OWM_API_KEY = '55897d420cc62d1611f67babc0aadb44';
+        const OWM_API_KEY = '55897d420cc62d1611f67babc0aadb44'; // Сохранен, но не используется в новой логике прогноза
         const AGRO_API_KEY = 'c6477a5e3fc1cefac1b12c0633df94a3';
         const AGRO_API_BASE_URL = 'https://api.agromonitoring.com/agro/1.0';
-        const OWM_FORECAST_URL = 'https://api.openweathermap.org/data/2.5/forecast';
+        const OWM_FORECAST_URL = 'https://api.openweathermap.org/data/2.5/forecast'; // Сохранен, но не используется в новой логике прогноза
 
         // === ФИКС ОШИБКИ 404 ДЛЯ ИКОНОК LEAFLET / LEAFLET.DRAW ===
         L.Icon.Default.imagePath = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
@@ -215,22 +215,24 @@
         }
         
         // ==========================================================
-        // API ИНТЕГРАЦИЯ
+        // API ИНТЕГРАЦИЯ (ОБНОВЛЕНО)
         // ==========================================================
 
         /**
-         * Получает прогноз погоды на 5 дней с шагом 3 часа для центральной точки поля.
-         * @param {object} center - Объект {lat, lng} центра поля.
-         * @returns {Promise<object>} Объект с данными прогноза OWM.
+         * Получает 5-дневный прогноз погоды для конкретного поля (Polygon ID).
+         * @param {string} agroId - AgroMonitoring Polygon ID.
+         * @returns {Promise<object|null>} Объект с данными прогноза Agro API.
          */
-        async function getOpenWeatherMapForecast(center) {
-            const url = `${OWM_FORECAST_URL}?lat=${center.lat}&lon=${center.lng}&units=metric&appid=${OWM_API_KEY}`;
+        async function getAgroForecastForField(agroId) {
+            if (!agroId) return null;
+            // Используем маршрут forecast/polygons, который дает прогноз, привязанный к ID полигона
+            const url = `${AGRO_API_BASE_URL}/weather/forecast/polygons/${agroId}?appid=${AGRO_API_KEY}`;
             try {
                 const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`Agro API Forecast Error! status: ${response.status}`);
                 return await response.json();
             } catch (error) {
-                console.error("Ошибка получения прогноза OWM:", error);
+                console.error("Ошибка получения прогноза Agro API:", error);
                 return null;
             }
         }
@@ -242,7 +244,7 @@
          * @returns {Promise<string|null>} AgroMonitoring Polygon ID или null в случае ошибки.
          */
         async function registerFieldOnAgroAPI(fieldName, coordinates) {
-            const center = coordinates[0]; // Берем первую координату как центр
+            const center = coordinates[0]; // Берем первую координату как центр (Для API требуется центр)
             const requestBody = {
                 name: fieldName,
                 geo_json: {
@@ -281,16 +283,12 @@
 
         /**
          * Получает агрометеорологические данные (почва, влажность) по Polygon ID.
-         * В AgroMonitoring API данные по почве обычно берутся с последнего доступного снимка (satellites/search).
-         * Для простоты здесь используем имитацию, если нет недавних снимков, или прямой запрос, если он доступен.
-         * В этом MVP я получу текущую погоду по координатам.
+         * В MVP: Получим текущую погоду по центру полигона.
          * * @param {string} agroId - AgroMonitoring Polygon ID.
          * @returns {Promise<object|null>} Объект с данными или null.
          */
         async function getAgroDataForField(agroId, center) {
-            // AgroMonitoring API не предоставляет прямого запроса "почва/влажность" по ID полигона,
-            // кроме как через анализ спутниковых снимков или запроса истории.
-            // Для MVP: Получим текущую погоду по центру полигона (более просто и близко к оригинальной логике).
+            // Для MVP: Получим текущую погоду по центру полигона (более просто).
             
             const url = `${AGRO_API_BASE_URL}/weather/current?lat=${center.lat}&lon=${center.lng}&appid=${AGRO_API_KEY}`;
             
@@ -303,8 +301,7 @@
                 const airTemp = data.main.temp;
                 const windSpeed = data.wind.speed;
 
-                // Для MVP: Влажность и темп. почвы все еще имитируются, так как AgroMonitoring требует
-                // более сложные запросы (например, /soil) или обработку спутниковых снимков.
+                // Для MVP: Влажность и темп. почвы все еще имитируются.
                 const soilTemp = (airTemp * 0.9 + Math.random() * 4).toFixed(1);
                 const soilMoisture = (15 + (windSpeed * 3) + Math.random() * 10).toFixed(0); // Простая имитация
                 
@@ -390,8 +387,8 @@
             // 2. Получение данных с API
             const center = field.coordinates[0]; // Используем первую координату как центр
             
-            // a) OpenWeatherMap для прогноза (заморозки)
-            const owmForecast = await getOpenWeatherMapForecast(center);
+            // a) AgroMonitoring для прогноза (заморозки) - ТЕПЕРЬ ПО ID ПОЛИГОНА
+            const agroForecast = await getAgroForecastForField(field.agroId);
             
             // b) AgroMonitoring для текущих условий (температура, влажность почвы)
             const agroData = await getAgroDataForField(field.agroId, center);
@@ -416,27 +413,36 @@
                 updateRiskUI('details-drought-risk', 'details-drought-risk-container', 'Нет данных API', 'bg-red-100 border-red-300 text-red-700');
             }
             
-            if (owmForecast) {
-                // РАСЧЕТ РИСКА ЗАМОРОЗКОВ (на основе прогноза OWM)
-                const freezeRisk = calculateFreezeRisk(owmForecast);
+            if (agroForecast) {
+                // РАСЧЕТ РИСКА ЗАМОРОЗКОВ (на основе прогноза Agro API)
+                const freezeRisk = calculateFreezeRisk(agroForecast);
                 updateRiskUI('details-freeze-risk', 'details-freeze-risk-container', freezeRisk.text, freezeRisk.color);
             } else {
                 updateRiskUI('details-freeze-risk', 'details-freeze-risk-container', 'Нет данных API', 'bg-red-100 border-red-300 text-red-700');
             }
+            
+            // Обновляем описание метода для риска заморозков
+            document.querySelector('#details-freeze-risk-container p.text-xs').textContent = 'Метод: Прогноз Agro API (мин. темп.)';
         }
 
         /**
-         * Расчет риска заморозков на основе прогноза OWM (минимальная температура в ближайшие 24ч).
-         * @param {object} forecast - Данные прогноза OWM.
+         * Расчет риска заморозков на основе прогноза AgroMonitoring (минимальная температура в ближайшие 24ч).
+         * @param {object} forecast - Данные прогноза Agro API.
          */
         function calculateFreezeRisk(forecast) {
+            // Прогноз AgroMonitoring API возвращает массив 'list', аналогично OWM.
+            // Используем ту же логику поиска минимальной температуры в ближайшие 24 часа.
+
+            // AgroMonitoring API возвращает 'dt' в секундах
             const oneDayFromNow = Date.now() / 1000 + 24 * 3600;
             let minTemp = 999;
 
             // Ищем минимальную температуру в ближайшие 24 часа
             forecast.list.forEach(item => {
+                const currentMinTemp = item.main.temp_min !== undefined ? item.main.temp_min : item.main.temp;
+                
                 if (item.dt < oneDayFromNow) {
-                    minTemp = Math.min(minTemp, item.main.temp_min);
+                    minTemp = Math.min(minTemp, currentMinTemp);
                 }
             });
 
@@ -505,7 +511,7 @@
         }
 
         // ==========================================================
-        // ЛОГИКА КАРТЫ (Обновлена для API)
+        // ЛОГИКА КАРТЫ (Сохранена)
         // ==========================================================
 
         let map, drawnItems, drawControl;
