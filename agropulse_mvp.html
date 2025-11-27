@@ -649,10 +649,13 @@
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', () => {
             loadProfileData(); // Загрузка профиля при старте
+            // Этот код нужно добавить до window.initMap()
+            L.Icon.Default.imagePath = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
             window.initMap();  // Инициализация карты
             window.navigateTo('map');
         });
 
     </script>
 </body>
+
 </html>
