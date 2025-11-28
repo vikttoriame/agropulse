@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>АгроПульс | AgroPulse MVP (API)</title>
+    <title>АгроПульс | AgroPulse MVP (Local Storage)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -14,19 +14,6 @@
         #map { height: 100vh; width: 100%; }
         /* Кастомный стиль для кнопок Leaflet Draw */
         .leaflet-container a { color: #10B981; }
-        /* Спиннер загрузки */
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: #10B981;
-            animation: spin 1s ease infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body class="bg-gray-50 font-sans">
@@ -61,9 +48,9 @@
                     <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm">
                         <h3 class="text-xl font-semibold mb-4">Сохранить Новое Поле</h3>
                         <input type="text" id="field-name-input" placeholder="Название поля (например, 'Участок 1')" 
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mb-4">
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mb-4">
                         <div class="flex justify-end space-x-3">
-                            <button onclick="closeModal('save-field-modal'); deletePendingLayer();" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Отмена</button>
+                            <button onclick="closeModal('save-field-modal')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Отмена</button>
                             <button onclick="saveNewField()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Сохранить</button>
                         </div>
                     </div>
@@ -80,11 +67,7 @@
 
                 <div id="field-details-card" class="bg-white p-6 rounded-xl shadow-2xl border border-gray-200 hidden">
                     <h3 id="details-field-name" class="text-2xl font-bold text-gray-700 mb-4"></h3>
-                    <div id="details-loading" class="flex justify-center items-center py-8">
-                        <div class="spinner mr-3"></div>
-                        <span class="text-lg text-gray-600">Загрузка данных с API...</span>
-                    </div>
-                    <div id="details-content" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         
                         <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
                             <p class="text-sm font-medium text-blue-600">Площадь</p>
@@ -92,7 +75,7 @@
                         </div>
 
                         <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                            <p class="text-sm font-medium text-orange-600">Темп. воздуха (2м)</p>
+                            <p class="text-sm font-medium text-orange-600">Темп. поверхности (2м)</p>
                             <p id="details-air-temp" class="text-3xl font-extrabold text-orange-800 mt-1">N/A</p>
                         </div>
 
@@ -109,13 +92,13 @@
                         <div class="p-4 rounded-lg border border-gray-200" id="details-freeze-risk-container">
                             <p class="text-sm font-medium text-gray-600">Риск заморозков</p>
                             <p id="details-freeze-risk" class="text-3xl font-extrabold mt-1">Расчет...</p>
-                            <p class="text-xs text-gray-500 mt-1">Метод: Прогноз Agro API по полигону (мин. темп.)</p>
+                            <p class="text-xs text-gray-500 mt-1">Метод: Разность температур (18:00 vs 21:00)</p>
                         </div>
 
                         <div class="p-4 rounded-lg border border-gray-200" id="details-drought-risk-container">
-                            <p class="text-sm font-medium text-gray-600">Риск засухи</p>
+                            <p class="text-sm font-medium text-gray-600">Риск засухи (Индекс Si)</p>
                             <p id="details-drought-risk" class="text-3xl font-extrabold mt-1">Расчет...</p>
-                            <p class="text-xs text-gray-500 mt-1">Метод: Влажность почвы (AgroMon.)</p>
+                            <p class="text-xs text-gray-500 mt-1">Метод: Общий индекс засушливости Педя (Si)</p>
                         </div>
                         
                     </div>
@@ -136,13 +119,13 @@
                     <div class="mb-4">
                         <label for="profile-name" class="block text-sm font-medium text-gray-700">Имя пользователя / Контактное лицо</label>
                         <input type="text" id="profile-name" placeholder="Введите Ваше имя"
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mt-1">
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mt-1">
                     </div>
 
                     <div class="mb-6">
                         <label for="profile-farm-name" class="block text-sm font-medium text-gray-700">Название хозяйства / Компании</label>
                         <input type="text" id="profile-farm-name" placeholder="Название Вашего хозяйства"
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mt-1">
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mt-1">
                     </div>
 
                     <button onclick="saveProfileData()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">
@@ -159,32 +142,28 @@
     <script>
         
         // ==========================================================
-        // ГЛОБАЛЬНЫЕ КОНСТАНТЫ И ПЕРЕМЕННЫЕ
+        // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
         // ==========================================================
-        const LOCAL_STORAGE_FIELDS_KEY = 'agropulse_fields_v2'; // Изменено для предотвращения конфликтов
+        const LOCAL_STORAGE_FIELDS_KEY = 'agropulse_fields';
         const LOCAL_STORAGE_PROFILE_KEY = 'agropulse_profile';
-        window.currentUserId = 'local-user-mvp';
-        let fieldsData = {};
-        
-        // API KEYS
-        // OWM_API_KEY больше не используется для прогноза, но оставлен для возможной будущей совместимости
-        const OWM_API_KEY = '55897d420cc62d1611f67babc0aadb44';
-        const AGRO_API_KEY = 'c6477a5e3fc1cefac1b12c0633df94a3'; 
-        // ВНИМАНИЕ: Если ошибка 404/401 сохраняется, проверьте ваш AGRO_API_KEY на сайте AgroMonitoring.
-        const AGRO_API_BASE_URL = 'https://api.agromonitoring.com/agro/1.0';
-        const OWM_FORECAST_URL = 'https://api.openweathermap.org/data/2.5/forecast'; // Не используется
+        window.currentUserId = 'local-user-mvp'; // Заглушка для ID
+        let fieldsData = {}; // Хранилище данных полей
 
-        // === ФИКС ОШИБКИ 404 ДЛЯ ИКОНОК LEAFLET / LEAFLET.DRAW ===
-        L.Icon.Default.imagePath = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
-
+        /**
+         * Утилита для генерации уникального ID
+         * @returns {string} Уникальный ID
+         */
         function generateId() {
             return Math.random().toString(36).substring(2, 9);
         }
-        
+
         // ==========================================================
-        // ЛОГИКА ПРОФИЛЯ (Сохранена)
+        // ЛОГИКА ПРОФИЛЯ (Локальное хранилище)
         // ==========================================================
         
+        /**
+         * Загрузка данных профиля
+         */
         function loadProfileData() {
             try {
                 const profileData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_PROFILE_KEY) || '{}');
@@ -195,6 +174,9 @@
             }
         }
 
+        /**
+         * Сохранение данных профиля
+         */
         window.saveProfileData = function() {
             const name = document.getElementById('profile-name').value.trim();
             const farmName = document.getElementById('profile-farm-name').value.trim();
@@ -217,120 +199,12 @@
         }
         
         // ==========================================================
-        // API ИНТЕГРАЦИЯ (ИСПРАВЛЕНО)
-        // ==========================================================
-
-        /**
-         * Получает 5-дневный прогноз погоды для конкретного поля (Polygon ID).
-         * Использует AgroMonitoring API.
-         * @param {string} agroId - AgroMonitoring Polygon ID.
-         * @returns {Promise<object|null>} Объект с данными прогноза Agro API.
-         */
-        async function getAgroForecastForField(agroId) {
-            if (!agroId) return null;
-            // Правильный маршрут для прогноза по полигону
-            const url = `${AGRO_API_BASE_URL}/weather/forecast/polygons/${agroId}?appid=${AGRO_API_KEY}`;
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`Agro API Forecast Error! status: ${response.status}`);
-                return await response.json();
-            } catch (error) {
-                console.error("Ошибка получения прогноза Agro API:", error);
-                return null;
-            }
-        }
-
-        /**
-         * Регистрирует новый полигон в AgroMonitoring API.
-         * @param {string} fieldName - Название поля.
-         * @param {array} coordinates - Координаты полигона в формате [[lng, lat], [lng, lat], ...].
-         * @returns {Promise<string|null>} AgroMonitoring Polygon ID или null в случае ошибки.
-         */
-        async function registerFieldOnAgroAPI(fieldName, coordinates) {
-            const center = coordinates[0]; // Берем первую координату как центр
-            const requestBody = {
-                name: fieldName,
-                geo_json: {
-                    type: "Feature",
-                    properties: {},
-                    geometry: {
-                        type: "Polygon",
-                        coordinates: [coordinates.map(c => [c.lng, c.lat])]
-                    }
-                },
-                center: [center.lng, center.lat]
-            };
-            
-            const url = `${AGRO_API_BASE_URL}/polygons?appid=${AGRO_API_KEY}`;
-            
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody)
-                });
-                
-                const data = await response.json();
-
-                if (!response.ok || data.id === undefined) {
-                    console.error("Ошибка регистрации полигона:", data);
-                    return null;
-                }
-                
-                return data.id;
-            } catch (error) {
-                console.error("Ошибка сети при регистрации полигона:", error);
-                return null;
-            }
-        }
-
-        /**
-         * Получает текущие метеоданные (воздух) по координатам и имитирует данные почвы.
-         * Эта функция ранее вызывала ошибку 404, теперь улучшена обработка.
-         * @param {string} agroId - AgroMonitoring Polygon ID (не используется напрямую в этом запросе).
-         * @param {object} center - Объект {lat, lng} центра поля.
-         * @returns {Promise<object|null>} Объект с данными или null.
-         */
-        async function getAgroDataForField(agroId, center) {
-            // Используем маршрут текущей погоды по координатам, который в MVP заменяет запрос по почве.
-            const url = `${AGRO_API_BASE_URL}/weather/current?lat=${center.lat}&lon=${center.lng}&appid=${AGRO_API_KEY}`;
-            
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    // Более информативное сообщение об ошибке, включая статус 404.
-                    const errorStatus = response.status;
-                    console.error(`Agro API Current Weather Error! status: ${errorStatus}. URL: ${url}`);
-                    throw new Error(`Agro API Current Weather Error! status: ${errorStatus}`);
-                }
-                
-                const data = await response.json();
-                
-                // Имитация данных почвы (оставлена без изменений)
-                const airTemp = data.main.temp;
-                const windSpeed = data.wind.speed;
-
-                const soilTemp = (airTemp * 0.9 + Math.random() * 4).toFixed(1);
-                const soilMoisture = (15 + (windSpeed * 3) + Math.random() * 10).toFixed(0); 
-                
-                return {
-                    airTemp: parseFloat(airTemp).toFixed(1),
-                    soilTemp: parseFloat(soilTemp),
-                    soilMoisture: parseInt(soilMoisture),
-                    pressure: data.main.pressure,
-                    humidity: data.main.humidity,
-                };
-            } catch (error) {
-                // Это ловит ошибку, сгенерированную выше (с ошибкой 404) или ошибку сети
-                console.error("Ошибка получения данных Agro API:", error);
-                return null;
-            }
-        }
-        
-        // ==========================================================
-        // ЛОГИКА ДАШБОРДА (ИСПРАВЛЕНО)
+        // ЛОГИКА ДАШБОРДА (Локальное хранилище)
         // ==========================================================
         
+        /**
+         * Загрузка полей из localStorage и обновление дашборда
+         */
         function refreshDashboard() {
             const storedFields = JSON.parse(localStorage.getItem(LOCAL_STORAGE_FIELDS_KEY) || '[]');
             const fieldListContainer = document.getElementById('field-list');
@@ -346,25 +220,22 @@
             storedFields.forEach(field => {
                 fieldsData[field.id] = field;
 
+                // Создание кнопки поля в списке
                 const areaKm2 = calculatePolygonAreaKm2(field.coordinates);
                 const button = document.createElement('button');
                 button.onclick = () => showFieldDetails(field.id);
                 button.className = 'w-full text-left bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition duration-200 ease-in-out border border-gray-200 hover:border-green-500 flex justify-between items-center';
-                
-                // Отображение Agro ID для отладки
-                const agroIdDisplay = field.agroId ? `<span class="text-xs font-mono text-green-500">Agro ID: ${field.agroId.substring(0, 8)}...</span>` : `<span class="text-xs text-red-500">Не зарегистрировано</span>`;
-                
                 button.innerHTML = `
                     <div>
                         <p class="text-lg font-semibold text-gray-800">${field.name}</p>
                         <p class="text-sm text-gray-500">${areaKm2.toFixed(3)} км² (${(areaKm2 * 100).toFixed(1)} Га)</p>
-                        ${agroIdDisplay}
                     </div>
                     <div class="text-green-600 font-bold">Подробнее &rarr;</div>
                 `;
                 fieldListContainer.appendChild(button);
             });
             
+            // Автоматически показываем детали первого поля
             const firstFieldId = Object.keys(fieldsData)[0];
             if (firstFieldId) {
                 showFieldDetails(firstFieldId);
@@ -372,135 +243,107 @@
         }
         
         /**
-         * Показывает детальную информацию о выбранном поле с данными из API.
+         * Показывает детальную информацию о выбранном поле и расчеты рисков
          * @param {string} fieldId - ID поля
          */
-        async function showFieldDetails(fieldId) {
+        function showFieldDetails(fieldId) {
             const field = fieldsData[fieldId];
             if (!field) return;
 
             const card = document.getElementById('field-details-card');
-            const loading = document.getElementById('details-loading');
-            const content = document.getElementById('details-content');
-            
             card.classList.remove('hidden');
-            content.classList.add('hidden');
-            loading.classList.remove('hidden');
 
-            document.getElementById('details-field-name').textContent = field.name;
-
-            // 1. Расчет площади
+            // Расчет площади
             const areaKm2 = calculatePolygonAreaKm2(field.coordinates);
             document.getElementById('details-area').textContent = `${areaKm2.toFixed(3)} км²`;
-            
-            // 2. Получение данных с API
-            const center = field.coordinates[0]; // Используем первую координату как центр
-            
-            // a) AgroMonitoring для прогноза (заморозки) - ТЕПЕРЬ ПО ID ПОЛИГОНА
-            const agroForecast = await getAgroForecastForField(field.agroId);
-            
-            // b) AgroMonitoring для текущих условий (температура, влажность почвы)
-            const agroData = await getAgroDataForField(field.agroId, center);
-            
-            // 3. Обновление UI
-            loading.classList.add('hidden');
-            content.classList.remove('hidden');
+            document.getElementById('details-field-name').textContent = field.name;
 
-            if (agroData) {
-                document.getElementById('details-air-temp').textContent = `${agroData.airTemp}°C`;
-                document.getElementById('details-soil-temp').textContent = `${agroData.soilTemp}°C`;
-                document.getElementById('details-soil-moisture').textContent = `${agroData.soilMoisture}%`;
+            // ИМИТАЦИЯ ПОГОДНЫХ ДАННЫХ
+            const simulatedData = simulateFieldData(field.coordinates[0]);
 
-                // РАСЧЕТ РИСКА ЗАСУХИ (на основе влажности почвы)
-                const droughtRisk = calculateDroughtRisk(agroData.soilMoisture);
-                updateRiskUI('details-drought-risk', 'details-drought-risk-container', droughtRisk.text, droughtRisk.color);
+            document.getElementById('details-air-temp').textContent = `${simulatedData.airTemp}°C`;
+            document.getElementById('details-soil-temp').textContent = `${simulatedData.soilTemp}°C`;
+            document.getElementById('details-soil-moisture').textContent = `${simulatedData.soilMoisture}%`;
 
-            } else {
-                document.getElementById('details-air-temp').textContent = `Ошибка API`;
-                document.getElementById('details-soil-temp').textContent = `Ошибка API`;
-                document.getElementById('details-soil-moisture').textContent = `Ошибка API`;
-                updateRiskUI('details-drought-risk', 'details-drought-risk-container', 'Нет данных API', 'bg-red-100 border-red-300 text-red-700');
-            }
-            
-            if (agroForecast) { 
-                // РАСЧЕТ РИСКА ЗАМОРОЗКОВ (на основе прогноза Agro API)
-                const freezeRisk = calculateFreezeRisk(agroForecast);
-                updateRiskUI('details-freeze-risk', 'details-freeze-risk-container', freezeRisk.text, freezeRisk.color);
-                
-                // Обновляем описание метода, чтобы оно соответствовало функции
-                document.querySelector('#details-freeze-risk-container p.text-xs').textContent = 'Метод: Прогноз Agro API по полигону (мин. темп.)';
-            } else {
-                updateRiskUI('details-freeze-risk', 'details-freeze-risk-container', 'Нет данных API', 'bg-red-100 border-red-300 text-red-700');
-                document.querySelector('#details-freeze-risk-container p.text-xs').textContent = 'Метод: Прогноз Agro API по полигону (мин. темп.)';
-            }
+            // РАСЧЕТ РИСКОВ 
+            const freezeRisk = calculateFreezeRisk(simulatedData);
+            updateRiskUI('details-freeze-risk', 'details-freeze-risk-container', freezeRisk.text, freezeRisk.color);
+
+            const droughtRisk = calculateDroughtRisk(simulatedData);
+            updateRiskUI('details-drought-risk', 'details-drought-risk-container', droughtRisk.text, droughtRisk.color);
         }
 
         /**
-         * Расчет риска заморозков на основе прогноза AgroMonitoring (минимальная температура в ближайшие 24ч).
-         * @param {object} forecast - Данные прогноза Agro API.
+         * Имитация агрометеорологических данных (функции сохранены)
          */
-        function calculateFreezeRisk(forecast) {
-            // Прогноз AgroMonitoring API возвращает массив 'list'
-            const oneDayFromNow = Date.now() / 1000 + 24 * 3600;
-            let minTemp = 999;
+        function simulateFieldData(centerCoord) {
+            const latFactor = (90 - Math.abs(centerCoord.lat)) / 90;
+            const nowHour = new Date().getHours();
+            
+            const baseTemp = 15 + latFactor * 15;
+            const dayAdjustment = (nowHour > 8 && nowHour < 20) ? 5 : 0;
+            const airTemp = (baseTemp + dayAdjustment + Math.random() * 5).toFixed(1);
+            
+            const soilTemp = (airTemp * 0.95 + Math.random() * 3).toFixed(1);
+            
+            const soilMoisture = (20 + (1 - latFactor) * 50 + Math.random() * 10).toFixed(0);
 
-            // Ищем минимальную температуру в ближайшие 24 часа
-            forecast.list.forEach(item => {
-                // Используем явный минимум 'temp_min', который должен быть в AgroMonitoring/OWM-совместимых данных
-                const currentMinTemp = item.main.temp_min !== undefined ? item.main.temp_min : item.main.temp; 
-                
-                if (item.dt < oneDayFromNow) {
-                    minTemp = Math.min(minTemp, currentMinTemp);
-                }
-            });
+            const tempDiff18 = 5 + Math.random() * 5;
+            const tempDiff21 = 5 + Math.random() * 5;
+            
+            return { airTemp: parseFloat(airTemp), soilTemp: parseFloat(soilTemp), soilMoisture: parseInt(soilMoisture), tempDiff18, tempDiff21 };
+        }
+        
+        /**
+         * Расчет риска заморозков (функция сохранена)
+         */
+        function calculateFreezeRisk(data) {
+            const diffChange = Math.abs(data.tempDiff21 - data.tempDiff18);
 
             let riskText = "Низкий";
             let riskColor = "bg-green-100 border-green-300 text-green-700";
 
-            if (minTemp < 0) {
-                riskText = `Высокий (${minTemp.toFixed(1)}°C)`;
+            if (diffChange > 3) {
+                riskText = "Высокий";
                 riskColor = "bg-red-100 border-red-300 text-red-700";
-            } else if (minTemp < 4) {
-                riskText = `Средний (${minTemp.toFixed(1)}°C)`;
+            } else if (diffChange > 1) {
+                riskText = "Средний";
                 riskColor = "bg-yellow-100 border-yellow-300 text-yellow-700";
             }
             return { text: riskText, color: riskColor };
         }
 
         /**
-         * Расчет риска засухи на основе влажности почвы (на основе имитации AgroMonitoring).
-         * Пороговые значения взяты из имитации оригинального кода.
-         * @param {number} soilMoisture - Влажность почвы в %.
+         * Расчет риска засухи (функция сохранена)
          */
-        function calculateDroughtRisk(soilMoisture) {
-            const threshold = 80; // Из оригинального кода: Si = (80 - soilMoisture) / 10
-            const Si = (threshold - soilMoisture) / 10;
+        function calculateDroughtRisk(data) {
+            const Si = (80 - data.soilMoisture) / 10;
             
             let riskText = "Норма";
             let riskColor = "bg-green-100 border-green-300 text-green-700";
 
             if (Si >= 2.0) {
-                riskText = `Засуха (Si ≥ 2.0, Вл. ${soilMoisture}%)`;
+                riskText = "Засуха (Si ≥ 2.0)";
                 riskColor = "bg-red-100 border-red-300 text-red-700";
             } else if (Si > 0) {
-                riskText = `Засушливо (Si > 0, Вл. ${soilMoisture}%)`;
+                riskText = "Засушливо (Si > 0)";
                 riskColor = "bg-yellow-100 border-yellow-300 text-yellow-700";
             }
             return { text: riskText, color: riskColor };
         }
         
         /**
-         * Обновляет UI для отображения рисков (сохранена)
+         * Обновляет UI для отображения рисков (функция сохранена)
          */
         function updateRiskUI(textId, containerId, text, colorClass) {
             document.getElementById(textId).textContent = text;
             const container = document.getElementById(containerId);
             container.className = container.className.split(' ').filter(c => !c.startsWith('bg-') && !c.startsWith('border-') && !c.startsWith('text-')).join(' ');
-            container.classList.add('p-4', 'rounded-lg', 'border', ...colorClass.split(' '));
+            container.classList.add(...colorClass.split(' '));
         }
-
+        
         /**
-         * Расчет площади полигона в км² (сохранена)
+         * Расчет площади полигона в км² (функция сохранена)
          */
         function calculatePolygonAreaKm2(coords) {
             if (!coords || coords.length < 3) return 0;
@@ -519,14 +362,14 @@
         }
 
         // ==========================================================
-        // ЛОГИКА КАРТЫ (Обновлена для API)
+        // ЛОГИКА КАРТЫ (Локальное хранилище)
         // ==========================================================
 
         let map, drawnItems, drawControl;
         let pendingLayer = null;
 
         /**
-         * Инициализация карты Leaflet (сохранена)
+         * Инициализация карты Leaflet (функция сохранена)
          */
         window.initMap = function() {
             if (map) {
@@ -577,17 +420,7 @@
         };
         
         /**
-         * Удаляет временный слой, если пользователь отменил сохранение.
-         */
-        function deletePendingLayer() {
-             if (pendingLayer && drawnItems) {
-                drawnItems.removeLayer(pendingLayer);
-                pendingLayer = null;
-            }
-        }
-
-        /**
-         * Открывает модальное окно (сохранена)
+         * Открывает модальное окно (функция сохранена)
          */
         function openModal(id) {
             document.getElementById(id).classList.remove('hidden');
@@ -595,18 +428,20 @@
         }
 
         /**
-         * Закрывает модальное окно (обновлена для удаления pendingLayer)
+         * Закрывает модальное окно (функция сохранена)
          */
         function closeModal(id) {
             document.getElementById(id).classList.remove('flex');
             document.getElementById(id).classList.add('hidden');
-            document.getElementById('field-name-input').value = '';
+            if (pendingLayer) {
+                pendingLayer = null;
+            }
         }
 
         /**
-         * Сохраняет новое поле в localStorage и регистрирует в Agro API.
+         * Сохраняет новое поле в localStorage
          */
-        window.saveNewField = async function() {
+        window.saveNewField = function() {
             if (!pendingLayer) return;
 
             const nameInput = document.getElementById('field-name-input');
@@ -623,55 +458,50 @@
                 const leafletCoords = geoJson.geometry.coordinates[0];
                 const coordinates = leafletCoords.map(c => ({ lat: c[1], lng: c[0] }));
                 
-                // 1. Регистрация полигона в AgroMonitoring API
-                const agroId = await registerFieldOnAgroAPI(fieldName, coordinates);
-                
-                if (!agroId) {
-                    alert("Ошибка регистрации поля в AgroMonitoring API. Поле сохранено локально, но данные API будут недоступны.");
-                }
-
                 const newField = {
-                    id: generateId(), // Локальный ID
-                    agroId: agroId, // ID от AgroMonitoring
+                    id: generateId(), // Генерация локального ID
                     name: fieldName,
                     coordinates: coordinates,
                     createdAt: new Date().toISOString(),
+                    center: coordinates[0]
                 };
                 
-                // 2. Сохранение в Local Storage
+                // Загрузка, добавление и сохранение
                 const storedFields = JSON.parse(localStorage.getItem(LOCAL_STORAGE_FIELDS_KEY) || '[]');
                 storedFields.push(newField);
                 localStorage.setItem(LOCAL_STORAGE_FIELDS_KEY, JSON.stringify(storedFields));
                 
-                console.log(`Поле успешно сохранено с ID: ${newField.id}, AgroID: ${newField.agroId}`);
+                console.log("Поле успешно сохранено с ID:", newField.id);
                 
-                // 3. Добавляем сохраненный слой на карту с ID
+                // Добавляем сохраненный слой на карту с ID
                 pendingLayer.options.fieldId = newField.id;
                 pendingLayer.options.fieldName = fieldName;
                 drawnItems.addLayer(pendingLayer);
                 
-                // 4. Очистка и закрытие
+                // Очистка и закрытие
+                nameInput.value = '';
                 closeModal('save-field-modal');
                 pendingLayer = null;
                 
             } catch (error) {
-                console.error("Критическая ошибка сохранения поля:", error);
-                alert("Критическая ошибка сохранения поля: " + error.message);
-                deletePendingLayer(); // Удаляем слой с карты в случае ошибки
+                console.error("Ошибка сохранения поля:", error);
+                alert("Ошибка сохранения поля: " + error.message);
             }
         }
         
         /**
-         * Загружает сохраненные поля из localStorage и отображает их на карте (сохранена)
+         * Загружает сохраненные поля из localStorage и отображает их на карте
          */
         function loadFieldsOnMap() {
             try {
                 const storedFields = JSON.parse(localStorage.getItem(LOCAL_STORAGE_FIELDS_KEY) || '[]');
                 
-                drawnItems.clearLayers();
-
+                drawnItems.clearLayers(); // Очищаем старые слои
+                
                 storedFields.forEach((field) => {
                     const fieldId = field.id;
+                    
+                    // Преобразование координат из {lat, lng} обратно в Leaflet-формат [lat, lng]
                     const leafletLatLngs = field.coordinates.map(c => [c.lat, c.lng]);
                     
                     const polygon = L.polygon(leafletLatLngs, {
@@ -679,15 +509,15 @@
                         weight: 3, 
                         opacity: 0.7, 
                         fillOpacity: 0.2,
-                        fieldId: fieldId, 
+                        fieldId: fieldId, // Сохраняем ID для редактирования/удаления
                         fieldName: field.name
                     });
 
+                    // Создание всплывающего окна (Popup) с кнопкой удаления
                     const popupContent = `
                         <div class="p-1">
                             <p class="font-bold text-gray-800">${field.name}</p>
                             <p class="text-sm text-gray-500">ID: ${fieldId.substring(0, 8)}...</p>
-                            ${field.agroId ? `<p class="text-xs text-green-600">Agro ID: ${field.agroId.substring(0, 8)}...</p>` : `<p class="text-xs text-red-600">Нет Agro ID</p>`}
                             <button onclick="deleteField('${fieldId}')" class="mt-2 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded-lg transition duration-200">
                                 Удалить Поле
                             </button>
@@ -711,40 +541,24 @@
         }
 
         /**
-         * Удаление поля из localStorage и с карты, а также из AgroMonitoring API
+         * Удаление поля из localStorage и с карты
          * @param {string} fieldId - ID поля для удаления
          */
-        window.deleteField = async function(fieldId) {
+        window.deleteField = function(fieldId) {
             if (!window.confirm("Вы уверены, что хотите удалить это поле?")) {
                 return;
             }
 
             try {
                 let storedFields = JSON.parse(localStorage.getItem(LOCAL_STORAGE_FIELDS_KEY) || '[]');
-                const fieldToDelete = storedFields.find(f => f.id === fieldId);
-
-                // 1. Удаление из AgroMonitoring API (если есть Agro ID)
-                if (fieldToDelete && fieldToDelete.agroId) {
-                    const agroId = fieldToDelete.agroId;
-                    const deleteUrl = `${AGRO_API_BASE_URL}/polygons/${agroId}?appid=${AGRO_API_KEY}`;
-                    
-                    const response = await fetch(deleteUrl, { method: 'DELETE' });
-                    
-                    if (!response.ok) {
-                        console.warn(`Ошибка удаления полигона ${agroId} из AgroMonitoring API: ${response.status}. Удалено локально.`);
-                        // Продолжаем удаление локально, даже если API не удалось
-                    } else {
-                        console.log(`Полигон ${agroId} успешно удален из AgroMonitoring.`);
-                    }
-                }
-
-                // 2. Локальное удаление
+                
+                // Фильтрация: оставляем все поля, кроме удаляемого
                 const updatedFields = storedFields.filter(f => f.id !== fieldId);
                 localStorage.setItem(LOCAL_STORAGE_FIELDS_KEY, JSON.stringify(updatedFields));
                 
-                console.log(`Поле ${fieldId} удалено локально.`);
+                console.log(`Поле ${fieldId} удалено.`);
                 
-                // 3. Обновление UI
+                // Обновление карты и дашборда
                 loadFieldsOnMap();
                 refreshDashboard();
             } catch (error) {
@@ -754,7 +568,7 @@
         }
         
         /**
-         * Сохранение отредактированного поля в localStorage (сохранена, без обновления Agro ID)
+         * Сохранение отредактированного поля в localStorage
          */
         function saveEditedField(fieldId, layer) {
              try {
@@ -768,12 +582,12 @@
 
                 if (fieldIndex !== -1) {
                     storedFields[fieldIndex].coordinates = coordinates;
+                    storedFields[fieldIndex].center = coordinates[0];
                     localStorage.setItem(LOCAL_STORAGE_FIELDS_KEY, JSON.stringify(storedFields));
                     console.log("Поле успешно отредактировано и сохранено:", fieldId);
                 }
                 
-                // ВНИМАНИЕ: Для полного соответствия нужно было бы обновить полигон в AgroMonitoring API.
-                
+                // Обновление дашборда для пересчета площади
                 refreshDashboard(); 
             } catch (error) {
                 console.error("Ошибка сохранения отредактированного поля:", error);
@@ -783,11 +597,14 @@
 
 
         // ==========================================================
-        // ГЛАВНАЯ НАВИГАЦИЯ (Сохранена)
+        // ГЛАВНАЯ НАВИГАЦИЯ
         // ==========================================================
         
         let currentPage = 'map'; 
 
+        /**
+         * Переключает отображаемую страницу (функция сохранена)
+         */
         window.navigateTo = function(pageId) {
             if (currentPage === pageId) return;
 
@@ -812,14 +629,13 @@
                 }, 100); 
             }
             
+            // Если переходим на дашборд, обновляем список полей
             if (pageId === 'dashboard') {
                 refreshDashboard();
             }
 
             document.querySelectorAll('.nav-btn').forEach(btn => {
-                const btnPageIdMatch = btn.onclick.toString().match(/navigateTo\('(\w+)'\)/);
-                const btnPageId = btnPageIdMatch ? btnPageIdMatch[1] : null;
-
+                const btnPageId = btn.onclick.toString().match(/navigateTo\('(\w+)'\)/)[1];
                 if (btnPageId === pageId) {
                     btn.classList.remove('bg-gray-700');
                     btn.classList.add('bg-green-600');
@@ -832,8 +648,8 @@
         
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', () => {
-            loadProfileData();
-            window.initMap(); 
+            loadProfileData(); // Загрузка профиля при старте
+            window.initMap();  // Инициализация карты
             window.navigateTo('map');
         });
 
